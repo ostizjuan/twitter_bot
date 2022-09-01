@@ -1,10 +1,11 @@
 import os
 import time
+import multiprocessing
 
 import PySimpleGUI as sg
 
 from src.tweet import Tweet
-from src.config import persisted_config, create_config
+from src.config import persisted_config, create_config, get_config_path
 
 
 def get_layout(config):
@@ -32,13 +33,20 @@ def get_layout(config):
     return layout
 
 
+def make_tweet(tweet, config):
+    if not tweet.logged:
+        tweet.login(config['user'], config['password'])
+    tweet.push_tweet()
+
+
 def main_window():
     """ Main window """
     config = persisted_config()
     layout = get_layout(config)
-    tweet = Tweet()
-    window = sg.Window('Tweet', layout=layout)
 
+    tweet = Tweet()
+
+    window = sg.Window('Tweet', layout=layout)
     while True:
         event, values = window.read(timeout=10)
         if tweet.timer.check_interval():
@@ -55,15 +63,17 @@ def main_window():
                         window.close()
                         main_window()
                 case '-START-':
-                    tweet.login(config['user'], config['password'])
-                    tweet.push_tweet()
+                    push_tweet = multiprocessing.Process(
+                        target=make_tweet, args=(tweet, config))
+                    push_tweet.start()
                 case '-STOP-':
                     tweet.stop()
+                    push_tweet.terminate()
                 case '-EDIT-':
                     window.close()
+                    os.remove(get_config_path())
                     main_window()
 
 
 def start():
-    if (main_window()):
-        main_window()
+    main_window()

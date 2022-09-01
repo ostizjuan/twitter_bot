@@ -11,7 +11,7 @@ class Tweet:
 
     def __init__(self, msg=None, timer=None):
         self.__url = 'https://twitter.com/login'
-        self.__logged = False
+        self.logged = False
         self.__browser = None
         self.msg = msg
         self.timer = Timer(timer)
@@ -45,7 +45,7 @@ class Tweet:
             return f'There was an error while loading the page: {error}'
 
     def push_tweet(self):
-        if self.__msg and self.__logged:
+        if self.__msg and self.logged:
             try:
                 WebDriverWait(self.__browser, timeout=15).until(lambda driver: driver.find_element(
                     By.CSS_SELECTOR, 'br[data-text="true"]')).send_keys(self.__msg)
