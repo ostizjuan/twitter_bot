@@ -1,9 +1,8 @@
 import os
-import time
-import multiprocessing
 
 import PySimpleGUI as sg
 
+from src.timer import Timer
 from src.tweet import Tweet
 from src.config import persisted_config, create_config, get_config_path
 
@@ -15,7 +14,7 @@ def get_layout(config):
     if config is not None:
         layout.append([
             [sg.Text(f'User: {config["user"]}'), sg.Button('Edit', key='-EDIT-'), sg.Text('Timer (Minutes)'),
-                sg.Spin([i for i in range(1, 1440)], key='-TIMER-', size=(5, 1), initial_value=10)],
+                sg.Spin([i for i in range(1, 1440)], key='-TIMER-', size=(5, 1), initial_value=1)],
             [sg.Text('Tweet content')],
             [sg.Multiline('', key='-MT-', size=(45, 5))],
             [sg.Button('Start', key='-START-'),
@@ -33,10 +32,12 @@ def get_layout(config):
     return layout
 
 
-def make_tweet(tweet, config):
-    if not tweet.logged:
-        tweet.login(config['user'], config['password'])
+def make_tweet(tweet, config, timer):
+    tweet.login(config['user'], config['password'])
     tweet.push_tweet()
+    timer.start()
+    tweet.logged = False
+    tweet.stop()
 
 
 def main_window():
@@ -44,19 +45,18 @@ def main_window():
     config = persisted_config()
     layout = get_layout(config)
 
+    timer = Timer()
     tweet = Tweet()
-    push_tweet = multiprocessing.Process(
-        target=make_tweet, args=(tweet, config))
 
     window = sg.Window('Tweet', layout=layout)
     while True:
         event, values = window.read(timeout=10)
-        if tweet.login and tweet.timer.check_interval():
-            multiprocessing.Process(target=tweet.push_tweet).start()
+
+        if timer.check_interval():
+            make_tweet(tweet, config, timer)
         else:
             match event:
                 case sg.WIN_CLOSED:
-                    tweet.stop()
                     break
 
                 case '-ADD-':
@@ -67,13 +67,12 @@ def main_window():
                         main_window()
 
                 case '-START-':
-                    tweet.timer.interval = values['-TIMER-'] * 60
+                    timer.interval = values['-TIMER-'] * 60
                     tweet.msg = values['-MT-']
-                    push_tweet.start()
+                    make_tweet(tweet, config, timer)
 
                 case '-STOP-':
-                    tweet.stop()
-                    push_tweet.terminate()
+                    timer.stop()
 
                 case '-EDIT-':
                     window.close()

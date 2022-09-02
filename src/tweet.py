@@ -1,20 +1,17 @@
 from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from src.timer import Timer
 
 
 class Tweet:
 
-    def __init__(self, msg=None, timer=None):
+    def __init__(self, msg=None):
         self.__url = 'https://twitter.com/login'
         self.logged = False
         self.__browser = None
         self.msg = msg
-        self.timer = Timer(timer)
 
     def __create_driver(self):
         options = Options()
@@ -52,7 +49,6 @@ class Tweet:
                 WebDriverWait(self.__browser, timeout=15).until(lambda driver: driver.find_element(
                     By.CSS_SELECTOR, 'div[data-testid="tweetButtonInline"][role="button"]')).click()
 
-                self.timer.start()
                 return 'Tweet success'
 
             except Exception as error:

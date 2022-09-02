@@ -7,16 +7,20 @@ class Timer:
         self.__start_time = 0
         self.interval = interval
 
-    def __time_as_int():
-        return int(round(time.time() * 100))
+    def __time_as_int(self):
+        return int(round(time()))
 
     def start(self):
         self.__start_time = self.__time_as_int()
 
+    def stop(self):
+        self.__start_time = 0
+
     def check_interval(self):
         if self.__start_time:
-            if self.__interval >= (self.__time_as_int() - self.__start_time):
-                self.__start_time = self.__time_as_int()
-                return True
+            return self.interval <= (self.__time_as_int() - self.__start_time)
         else:
             return False
+
+    def check(self):
+        return self.__time_as_int() - self.__start_time
