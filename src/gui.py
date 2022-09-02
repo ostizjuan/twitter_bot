@@ -1,13 +1,38 @@
 import os
+from random import choice
 
 import PySimpleGUI as sg
 
 from src.timer import Timer
 from src.tweet import Tweet
 from src.config import persisted_config, create_config, get_config_path
+from src.db import get_tweets, add_tweet
 
 
-def get_layout(config):
+def add_tweet_window(username):
+    window = sg.Window('Add Tweet', layout=[
+        [sg.Text('Message:')],
+        [sg.InputText(key='msg')],
+        [sg.Button('Add Tweet')]
+    ])
+
+    while True:
+        event, values = window.read()
+        if event == sg.WIN_CLOSED:
+            window.close()
+            break
+        elif event == 'Add Tweet':
+            add_tweet(values['msg'], username)
+            window.close()
+            break
+
+
+def get_random_tweet(tweets):
+    """ Get a random tweet from the database """
+    return choice(tweets)
+
+
+def get_layout(config, tweets=None):
     """ Obtain the layout for the main window, based on whether or not the user has a config file """
     layout = []
 
@@ -16,9 +41,11 @@ def get_layout(config):
             [sg.Text(f'User: {config["user"]}'), sg.Button('Edit', key='-EDIT-'), sg.Text('Timer (Minutes)'),
                 sg.Spin([i for i in range(1, 1440)], key='-TIMER-', size=(5, 1), initial_value=1)],
             [sg.Text('Tweet content')],
-            [sg.Multiline('', key='-MT-', size=(45, 5))],
+            [sg.Multiline('\n'.join([f'{tweet[0]}: {tweet[1]}' for tweet in tweets]),
+                          key='-MT-', size=(45, 5), disabled=True)],
             [sg.Button('Start', key='-START-'),
-                sg.Button('Stop', key='-STOP-')]
+                sg.Button('Stop', key='-STOP-'),
+                sg.Button('Add Tweet', key='-ADD_TWEET-', size=(10, 1))]
         ])
 
     else:
@@ -43,7 +70,12 @@ def make_tweet(tweet, config, timer):
 def main_window():
     """ Main window """
     config = persisted_config()
-    layout = get_layout(config)
+
+    if config is None:
+        layout = get_layout(config)
+    else:
+        tweets = get_tweets(config['user'])
+        layout = get_layout(config, tweets)
 
     timer = Timer()
     tweet = Tweet()
@@ -57,6 +89,7 @@ def main_window():
         else:
             match event:
                 case sg.WIN_CLOSED:
+                    window.close()
                     break
 
                 case '-ADD-':
@@ -68,7 +101,7 @@ def main_window():
 
                 case '-START-':
                     timer.interval = values['-TIMER-'] * 60
-                    tweet.msg = values['-MT-']
+                    tweet.msg = get_random_tweet(tweets)[1]
                     make_tweet(tweet, config, timer)
 
                 case '-STOP-':
@@ -77,6 +110,11 @@ def main_window():
                 case '-EDIT-':
                     window.close()
                     os.remove(get_config_path())
+                    main_window()
+
+                case '-ADD_TWEET-':
+                    window.close()
+                    add_tweet_window(config['user'])
                     main_window()
 
 
