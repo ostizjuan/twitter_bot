@@ -17,7 +17,7 @@ def get_layout(config):
             [sg.Text(f'User: {config["user"]}'), sg.Button('Edit', key='-EDIT-'), sg.Text('Timer'),
                 sg.Spin([i for i in range(1, 86400)], key='-TIMER-', size=(5, 1), initial_value=1)],
             [sg.Text('Tweet content')],
-            [sg.Multiline('', key='-MT-', size=(45, 5), write_only=True)],
+            [sg.Multiline('', key='-MT-', size=(45, 5))],
             [sg.Button('Start', key='-START-'),
                 sg.Button('Stop', key='-STOP-')]
         ])
@@ -36,6 +36,11 @@ def get_layout(config):
 def make_tweet(tweet, config):
     if not tweet.logged:
         tweet.login(config['user'], config['password'])
+    print('logged')
+    tweet.push_tweet()
+
+
+def push_tweet(tweet):
     tweet.push_tweet()
 
 
@@ -45,13 +50,14 @@ def main_window():
     layout = get_layout(config)
 
     tweet = Tweet()
+    push_tweet = multiprocessing.Process(
+        target=make_tweet, args=(tweet, config))
 
     window = sg.Window('Tweet', layout=layout)
     while True:
         event, values = window.read(timeout=10)
-        if tweet.timer.check_interval():
-            tweet.push_tweet()
-
+        if tweet.login and tweet.timer.check_interval():
+            multiprocessing.Process(target=tweet.push_tweet).start()
         else:
             match event:
                 case sg.WIN_CLOSED:
@@ -63,8 +69,7 @@ def main_window():
                         window.close()
                         main_window()
                 case '-START-':
-                    push_tweet = multiprocessing.Process(
-                        target=make_tweet, args=(tweet, config))
+                    tweet.msg = values['-MT-']
                     push_tweet.start()
                 case '-STOP-':
                     tweet.stop()
