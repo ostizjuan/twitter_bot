@@ -46,13 +46,13 @@ class Tweet:
     def push_tweet(self):
         if self.__msg and self.logged:
             try:
-                print('in')
                 WebDriverWait(self.__browser, timeout=15).until(lambda driver: driver.find_element(
                     By.CSS_SELECTOR, 'br[data-text="true"]')).send_keys(self.msg)
 
                 WebDriverWait(self.__browser, timeout=15).until(lambda driver: driver.find_element(
                     By.CSS_SELECTOR, 'div[data-testid="tweetButtonInline"][role="button"]')).click()
 
+                self.timer.start()
                 return 'Tweet success'
 
             except Exception as error:
