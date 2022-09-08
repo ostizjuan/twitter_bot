@@ -29,9 +29,9 @@ def get_tweets(user):
     return tweets
 
 
-def delete_tweet(id):
+def delete_tweet(id, user):
     conn = sqlite3.connect('tweets.db')
     cursor = conn.cursor()
-    cursor.execute('DELETE FROM tweets WHERE id = ?', (id,))
+    cursor.execute('DELETE FROM tweets WHERE id = ? AND user = ?', (id, user))
     conn.commit()
     conn.close()

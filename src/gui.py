@@ -6,13 +6,13 @@ import PySimpleGUI as sg
 from src.timer import Timer
 from src.tweet import Tweet
 from src.config import persisted_config, create_config, get_config_path
-from src.db import get_tweets, add_tweet
+from src.db import get_tweets, add_tweet, delete_tweet
 
 
 def add_tweet_window(username):
     window = sg.Window('Add Tweet', layout=[
         [sg.Text('Message:')],
-        [sg.InputText(key='msg')],
+        [sg.InputText(key='-MSG-')],
         [sg.Button('Add Tweet')]
     ])
 
@@ -22,7 +22,27 @@ def add_tweet_window(username):
             window.close()
             break
         elif event == 'Add Tweet':
-            add_tweet(values['msg'], username)
+            add_tweet(values['-MSG-'], username)
+            window.close()
+            break
+
+
+def delete_tweet_window(username, tweets):
+    window = sg.Window('Delete Tweet', layout=[
+        [sg.Multiline("\n".join(
+            [f'{tweet[0]}: {tweet[1]}' for tweet in tweets]), key='-MT-', size=(45, 5), disabled=True)],
+        [sg.Text('ID:')],
+        [sg.InputText(key='-ID-')],
+        [sg.Button('Delete Tweet')]
+    ])
+
+    while True:
+        event, values = window.read()
+        if event == sg.WIN_CLOSED:
+            window.close()
+            break
+        elif event == 'Delete Tweet':
+            delete_tweet(values['-ID-'], username)
             window.close()
             break
 
@@ -45,7 +65,8 @@ def get_layout(config, tweets=None):
                           key='-MT-', size=(45, 5), disabled=True)],
             [sg.Button('Start', key='-START-'),
                 sg.Button('Stop', key='-STOP-'),
-                sg.Button('Add Tweet', key='-ADD_TWEET-', size=(10, 1))]
+                sg.Button('Add Tweet', key='-ADD_TWEET-', size=(10, 1)),
+                sg.Button('Delete Tweet', key='-DELETE_TWEET-')],
         ])
 
     else:
@@ -59,12 +80,13 @@ def get_layout(config, tweets=None):
     return layout
 
 
-def make_tweet(tweet, config, timer):
+def login(tweet, config, timer):
     tweet.login(config['user'], config['password'])
+
+
+def make_tweet(tweet, timer):
     tweet.push_tweet()
     timer.start()
-    tweet.logged = False
-    tweet.stop()
 
 
 def main_window():
@@ -85,7 +107,7 @@ def main_window():
         event, values = window.read(timeout=10)
 
         if timer.check_interval():
-            make_tweet(tweet, config, timer)
+            make_tweet(tweet, timer)
         else:
             match event:
                 case sg.WIN_CLOSED:
@@ -100,9 +122,13 @@ def main_window():
                         main_window()
 
                 case '-START-':
-                    timer.interval = values['-TIMER-'] * 60
-                    tweet.msg = get_random_tweet(tweets)[1]
-                    make_tweet(tweet, config, timer)
+                    if tweets:
+                        timer.interval = values['-TIMER-'] * 60
+                        tweet.msg = get_random_tweet(tweets)[1]
+                        login(tweet, config, timer)
+                        make_tweet(tweet, timer)
+                    else:
+                        sg.popup('No tweets found')
 
                 case '-STOP-':
                     timer.stop()
@@ -116,6 +142,14 @@ def main_window():
                     window.close()
                     add_tweet_window(config['user'])
                     main_window()
+
+                case '-DELETE_TWEET-':
+                    if tweets:
+                        window.close()
+                        delete_tweet_window(config['user'], tweets)
+                        main_window()
+                    else:
+                        sg.popup('No tweets to delete')
 
 
 def start():
